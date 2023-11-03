@@ -1,0 +1,69 @@
+name: Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+defaults:
+  run:
+    shell: zsh {0}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCHEME: "DBThreadSafe"
+
+jobs:
+  unit-tests-spm:
+    runs-on: 'macos-13'
+
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        DESTINATION: ["platform=iOS Simulator,name=iPhone 15", "platform=OS X", "platform=tvOS Simulator,name=Apple TV", "platform=watchOS Simulator,name=Apple Watch Ultra (49mm)"]
+
+    steps:
+    - name: Get source code
+      uses: actions/checkout@v3
+
+    - name: Prepare Environment for App Build
+      uses: ./.github/actions/prepare_env_app_build
+        
+    - name: Resolve Dependencies
+      run: >
+        xcodebuild -resolvePackageDependencies
+        -scheme ${{ env.SCHEME }}
+        -destination '${{ matrix.DESTINATION }}'
+        -quiet
+
+    - name: Build
+      run: >
+        xcodebuild build-for-testing
+        -scheme ${{ env.SCHEME }}
+        -destination '${{ matrix.DESTINATION }}'
+        -quiet
+
+    - name: Test
+      if: ${{ !contains(matrix.DESTINATION, 'watchOS') }} # watchOS Simulator is too slow on GitHub-hosted Runners, expectation-related tests are flaky
+      run: >
+        xcodebuild test-without-building
+        -scheme ${{ env.SCHEME }}
+        -destination '${{ matrix.DESTINATION }}'
+        -quiet
+
+  # This allows us to have a branch protection rule for tests and deploys with matrix
+  status-for-matrix:
+    runs-on: 'macos-latest'
+    needs: ['unit-tests-spm']
+    if: always()
+    steps:
+      - name: Successful deploy
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: exit 0
+      - name: Failing deploy
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: exit 1
