@@ -35,6 +35,20 @@ class DBThreadSafeTests: XCTestCase {
         }
     }
     
+    func testReadClosureReturnValue() {
+        // Create an instance of the class or struct that contains the `read` function
+        let container = ThreadSafeContainer("Hello, World!")
+        
+        // Call the `read` function with a closure that transforms the value
+        let result = container.read { value in
+            value.count
+        }
+        
+        // Assert that the returned result is correct
+        XCTAssertEqual(result, 13)
+    }
+
+    
     func testConcurrentSet() {
         let container = ThreadSafeContainer(0)
         

@@ -23,6 +23,18 @@ public class ThreadSafeContainer<T> {
         closure(value)
     }
     
+    public func read<U>(_ closure: (_ value: T) -> U) -> U {
+        pthread_rwlock_rdlock(&lock)
+        defer { pthread_rwlock_unlock(&lock) }
+        return closure(value)
+    }
+    
+    public func read<U>(_ closure: (_ value: T) throws -> U) throws -> U {
+        pthread_rwlock_rdlock(&lock)
+        defer { pthread_rwlock_unlock(&lock) }
+        return try closure(value)
+    }
+    
     public func read(_ closure: (_ value: T) throws -> Void) throws {
         pthread_rwlock_rdlock(&lock)
         defer { pthread_rwlock_unlock(&lock) }
