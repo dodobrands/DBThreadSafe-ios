@@ -35,6 +35,15 @@ class DBThreadSafeTests: XCTestCase {
         }
     }
     
+    func testReadClosureReturnValue() {
+        let container = ThreadSafeContainer("Hello, World!")
+        
+        let result = container.read { $0.count }
+        
+        XCTAssertEqual(result, 13)
+    }
+
+    
     func testConcurrentSet() {
         let container = ThreadSafeContainer(0)
         
