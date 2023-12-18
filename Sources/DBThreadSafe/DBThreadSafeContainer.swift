@@ -1,6 +1,6 @@
 import Foundation
 
-public class ThreadSafeContainer<T> {
+public class DBThreadSafeContainer<T> {
     private var value: T
     private var lock = pthread_rwlock_t()
     

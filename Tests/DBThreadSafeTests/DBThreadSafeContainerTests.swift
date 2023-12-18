@@ -1,11 +1,11 @@
 import DBThreadSafe
 import XCTest
 
-class DBThreadSafeTests: XCTestCase {
+class DBThreadSafeContainerTests: XCTestCase {
     let iterations = 100000
     
     func testConcurrentGet() {
-        let container = ThreadSafeContainer(0)
+        let container = DBThreadSafeContainer(0)
         
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             _ = container.read()
@@ -15,7 +15,7 @@ class DBThreadSafeTests: XCTestCase {
     }
     
     func testRead() {
-        let container = ThreadSafeContainer("Hello, World!")
+        let container = DBThreadSafeContainer("Hello, World!")
         
         enum TestError: Error {
             case someError
@@ -36,7 +36,7 @@ class DBThreadSafeTests: XCTestCase {
     }
     
     func testReadClosureReturnValue() {
-        let container = ThreadSafeContainer("Hello, World!")
+        let container = DBThreadSafeContainer("Hello, World!")
         
         let result = container.read { $0.count }
         
@@ -45,7 +45,7 @@ class DBThreadSafeTests: XCTestCase {
 
     
     func testConcurrentSet() {
-        let container = ThreadSafeContainer(0)
+        let container = DBThreadSafeContainer(0)
         
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             container.write { value in
@@ -58,7 +58,7 @@ class DBThreadSafeTests: XCTestCase {
     }
     
     func testConcurrentGetArray() {
-        let container = ThreadSafeContainer([1, 2, 3])
+        let container = DBThreadSafeContainer([1, 2, 3])
         
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             _ = container.read()
@@ -68,7 +68,7 @@ class DBThreadSafeTests: XCTestCase {
     }
     
     func testConcurrentSetArray() throws {
-        let container = ThreadSafeContainer([0])
+        let container = DBThreadSafeContainer([0])
         
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             container.write { value in
@@ -81,7 +81,7 @@ class DBThreadSafeTests: XCTestCase {
     }
     
     func testConcurrentGetDictionary() {
-        let container = ThreadSafeContainer(["key1": "value1", "key2": "value2"])
+        let container = DBThreadSafeContainer(["key1": "value1", "key2": "value2"])
         
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             _ = container.read()
@@ -91,7 +91,7 @@ class DBThreadSafeTests: XCTestCase {
     }
     
     func testConcurrentSetDictionary() {
-        let container = ThreadSafeContainer(["key": 0])
+        let container = DBThreadSafeContainer(["key": 0])
         
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             container.write { dict in
