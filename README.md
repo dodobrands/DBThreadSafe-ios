@@ -1,6 +1,6 @@
 # DBThreadSafeContainer
 
-DBThreadSafeContainer is a generic class that provides thread-safe read and write access to a stored value. It uses a pthread_rwlock_t lock to ensure that multiple threads can safely access the value concurrently.
+DBThreadSafeContainer is a generic class that provides thread-safe read and write access to a stored value. It uses a `pthread_rwlock_t` lock to ensure that multiple threads can safely access the value concurrently.
 
 ## Usage
 
@@ -76,11 +76,11 @@ try container.write { value in
 
 ## Thread Safety
 
-DBThreadSafeContainer ensures that read and write operations are thread-safe by using a pthread_rwlock_t lock. This allows multiple threads to read the value concurrently, while ensuring that only one thread can write to the value at a time.
+DBThreadSafeContainer ensures that read and write operations are thread-safe by using a `pthread_rwlock_t` lock. This allows multiple threads to read the value concurrently, while ensuring that only one thread can write to the value at a time.
 
 ## Cleanup
 
-DBThreadSafeContainer automatically destroys the pthread_rwlock_t lock when it is deallocated to prevent any resource leaks.
+DBThreadSafeContainer automatically destroys the `pthread_rwlock_t` lock when it is deallocated to prevent any resource leaks.
 
 ## License
 
