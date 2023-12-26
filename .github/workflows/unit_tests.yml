@@ -32,28 +32,28 @@ jobs:
         
     - name: Resolve Dependencies
       run: >
-        xcodebuild -resolvePackageDependencies
+        set -o pipefail && xcodebuild -resolvePackageDependencies
         -scheme ${{ env.SCHEME }}
         -destination '${{ matrix.DESTINATION }}'
-        -quiet
+        | xcbeautify --renderer github-actions
 
     - name: Build
       run: >
-        xcodebuild build-for-testing
+        set -o pipefail && xcodebuild build-for-testing
         -scheme ${{ env.SCHEME }}
         -destination '${{ matrix.DESTINATION }}'
-        -quiet
+        | xcbeautify --renderer github-actions
 
     - name: Test
       id: tests
       run: |
         resultBundlePath="${{ env.SCHEME }}-${{ matrix.DESTINATION }}-${{ github.run_number }}-${{ github.run_attempt }}.xcresult"
 
-        xcodebuild test-without-building \
+        set -o pipefail && xcodebuild test-without-building \
         -scheme ${{ env.SCHEME }} \
         -destination '${{ matrix.DESTINATION }}' \
         -resultBundlePath "$resultBundlePath" \
-        -quiet
+        | xcbeautify --renderer github-actions
 
         echo "resultBundlePath=$resultBundlePath">> $GITHUB_OUTPUT
 
