@@ -1,5 +1,8 @@
 # DBThreadSafeContainer
 
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fdodobrands%2FDBThreadSafe-ios%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/dodobrands/DBThreadSafe-ios)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fdodobrands%2FDBThreadSafe-ios%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/dodobrands/DBThreadSafe-ios)
+
 DBThreadSafeContainer is a generic class that provides thread-safe read and write access to a stored value. It uses a `pthread_rwlock_t` lock to ensure that multiple threads can safely access the value concurrently.
 
 ## Usage
