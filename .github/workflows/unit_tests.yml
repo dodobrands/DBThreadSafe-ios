@@ -52,8 +52,7 @@ jobs:
         -resultBundlePath ${{ env.SCHEME }}
         -quiet
 
-    - name: Report
-      uses: kishikawakatsumi/xcresulttool@v1
+    - uses: actions/upload-artifact@v4
       with:
         path: ${{ env.SCHEME }}.xcresult
       if: success() || failure()
