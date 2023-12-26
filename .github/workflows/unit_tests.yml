@@ -45,16 +45,22 @@ jobs:
         -quiet
 
     - name: Test
-      run: >
-        xcodebuild test-without-building
-        -scheme ${{ env.SCHEME }}
-        -destination '${{ matrix.DESTINATION }}'
-        -resultBundlePath ${{ env.SCHEME }}
+      id: tests
+      run: |
+        resultBundlePath="${{ env.SCHEME }}-${{ matrix.DESTINATION }}-${{ github.run_number }}-${{ github.run_attempt }}.xcresult"
+
+        xcodebuild test-without-building \
+        -scheme ${{ env.SCHEME }} \
+        -destination '${{ matrix.DESTINATION }}' \
+        -resultBundlePath "$resultBundlePath" \
         -quiet
+
+        echo "resultBundlePath=$resultBundlePath">> $GITHUB_OUTPUT
 
     - uses: actions/upload-artifact@v4
       with:
-        path: ${{ env.SCHEME }}.xcresult
+        name: ${{ steps.tests.outputs.resultBundlePath }}
+        path: ${{ steps.tests.outputs.resultBundlePath }}
       if: success() || failure()
 
   # This allows us to have a branch protection rule for tests and deploys with matrix
