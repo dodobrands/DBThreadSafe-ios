@@ -12,3 +12,7 @@ runs:
     uses: maxim-lobanov/setup-xcode@v1
     with:
       xcode-version: ${{ env.XCODE_VERSION }}
+
+  - name: Install xcbeautify
+    shell: 'zsh {0}'
+    run: brew install xcbeautify
