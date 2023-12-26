@@ -17,28 +17,16 @@ public class DBThreadSafeContainer<T> {
         return value
     }
     
-    public func read(_ closure: (_ value: T) -> Void) {
-        pthread_rwlock_rdlock(&lock)
-        defer { pthread_rwlock_unlock(&lock) }
-        closure(value)
-    }
-    
-    public func read<U>(_ closure: (_ value: T) -> U) -> U {
-        pthread_rwlock_rdlock(&lock)
-        defer { pthread_rwlock_unlock(&lock) }
-        return closure(value)
-    }
-    
-    public func read<U>(_ closure: (_ value: T) throws -> U) throws -> U {
-        pthread_rwlock_rdlock(&lock)
-        defer { pthread_rwlock_unlock(&lock) }
-        return try closure(value)
-    }
-    
-    public func read(_ closure: (_ value: T) throws -> Void) throws {
+    public func read(_ closure: (_ value: T) throws -> Void) rethrows {
         pthread_rwlock_rdlock(&lock)
         defer { pthread_rwlock_unlock(&lock) }
         try closure(value)
+    }
+    
+    public func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
+        pthread_rwlock_rdlock(&lock)
+        defer { pthread_rwlock_unlock(&lock) }
+        return try closure(value)
     }
     
     /// Replaces current value with a new one
@@ -48,16 +36,9 @@ public class DBThreadSafeContainer<T> {
         defer { pthread_rwlock_unlock(&lock) }
         value = newValue
     }
-    
+        
     /// Returns current value in a closure with possibility to make multiple modifications of any kind inside a single lock.
-    public func write(_ closure: (_ value: inout T) -> Void) {
-        pthread_rwlock_wrlock(&lock)
-        defer { pthread_rwlock_unlock(&lock) }
-        closure(&value)
-    }
-    
-    /// Returns current value in a closure with possibility to make multiple modifications of any kind inside a single lock.
-    public func write(_ closure: (_ value: inout T) throws -> Void) throws {
+    public func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
         pthread_rwlock_wrlock(&lock)
         defer { pthread_rwlock_unlock(&lock) }
         try closure(&value)
