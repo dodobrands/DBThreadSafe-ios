@@ -1,7 +1,7 @@
 import Foundation
 
-final class Lock {
-    private let lock = UnsafeMutablePointer<pthread_rwlock_t>.allocate(capacity: 1)
+final class Lock: Sendable {
+    nonisolated(unsafe) private let lock = UnsafeMutablePointer<pthread_rwlock_t>.allocate(capacity: 1)
     
     init() {
         precondition(pthread_rwlock_init(lock, nil) == 0, "Failed to initialize the lock")

@@ -1,8 +1,8 @@
 import Foundation
 
-public final class DBThreadSafeContainer<T> {
-    private var value: T
-    private var lock = Lock()
+public final class DBThreadSafeContainer<T>: Sendable {
+    nonisolated(unsafe) private var value: T
+    private let lock = Lock()
     
     public init(_ value: T) {
         self.value = value
