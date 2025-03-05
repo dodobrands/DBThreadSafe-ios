@@ -14,7 +14,7 @@ env:
 
 jobs:
   unit-tests-spm:
-    runs-on: 'macos-latest'
+    runs-on: 'macos-15'
 
     timeout-minutes: 10
 
