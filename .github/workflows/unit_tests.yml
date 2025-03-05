@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - 'main'
-  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -15,13 +14,13 @@ env:
 
 jobs:
   unit-tests-spm:
-    runs-on: 'macos-13'
+    runs-on: 'macos-15'
 
     timeout-minutes: 10
 
     strategy:
       matrix:
-        DESTINATION: ["platform=iOS Simulator,name=iPhone 15", "platform=OS X", "platform=tvOS Simulator,name=Apple TV", "platform=watchOS Simulator,name=Apple Watch Ultra (49mm)"]
+        DESTINATION: ["platform=iOS Simulator,name=iPhone 16", "platform=OS X", "platform=tvOS Simulator,name=Apple TV", "platform=watchOS Simulator,name=Apple Watch Ultra 2 (49mm)"]
 
     steps:
     - name: Get source code
