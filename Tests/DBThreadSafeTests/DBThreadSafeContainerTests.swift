@@ -1,119 +1,129 @@
 import DBThreadSafe
-import XCTest
+import Foundation
+import Testing
 
-class DBThreadSafeContainerTests: XCTestCase {
+@Suite("DBThreadSafeContainer Tests")
+struct DBThreadSafeContainerTests {
     let iterations = 100000
-    
-    func testConcurrentGet() {
+
+    @Test("Concurrent reads return correct value")
+    func concurrentGet() {
         let container = DBThreadSafeContainer(0)
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             _ = container.read()
         }
-        
-        XCTAssertEqual(container.read(), 0)
+
+        #expect(container.read() == 0)
     }
-    
-    func testRead() {
+
+    @Test("Read with closure")
+    func read() {
         let container = DBThreadSafeContainer("Hello, World!")
-        
+
         enum TestError: Error {
             case someError
         }
-        
+
         // Test case 1: Read value successfully
         let expectedValue1 = "Hello, World!"
         container.read { value in
-            XCTAssertEqual(value, expectedValue1)
+            #expect(value == expectedValue1)
         }
-        
+
         // Test case 2: Read value with throwing closure
-        XCTAssertThrowsError(try container.read { _ in
-            throw TestError.someError
-        }) { error in
-            XCTAssertEqual(error as? TestError, TestError.someError)
+        #expect(throws: TestError.self) {
+            try container.read { _ in
+                throw TestError.someError
+            }
         }
-    }
-    
-    func testReadClosureReturnValue() {
-        let container = DBThreadSafeContainer("Hello, World!")
-        
-        let result = container.read { $0.count }
-        
-        XCTAssertEqual(result, 13)
     }
 
-    
-    func testConcurrentSet() {
+    @Test("Read closure with return value")
+    func readClosureReturnValue() {
+        let container = DBThreadSafeContainer("Hello, World!")
+
+        let result = container.read { $0.count }
+
+        #expect(result == 13)
+    }
+
+
+    @Test("Concurrent writes increment correctly")
+    func concurrentSet() {
         let container = DBThreadSafeContainer(0)
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             container.write { value in
                 let newValue = value + 1
                 value = newValue
             }
         }
-        
-        XCTAssertEqual(container.read(), iterations)
+
+        #expect(container.read() == iterations)
     }
-    
-    func testConcurrentGetArray() {
+
+    @Test("Concurrent array reads return correct value")
+    func concurrentGetArray() {
         let container = DBThreadSafeContainer([1, 2, 3])
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             _ = container.read()
         }
-        
-        XCTAssertEqual(container.read(), [1, 2, 3])
+
+        #expect(container.read() == [1, 2, 3])
     }
-    
-    func testConcurrentSetArray() throws {
+
+    @Test("Concurrent array appends")
+    func concurrentSetArray() throws {
         let container = DBThreadSafeContainer([0])
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             container.write { value in
                 let lastValue = value.last!
                 value.append(lastValue + 1)
             }
         }
-        
-        XCTAssertEqual(container.read().last, iterations)
+
+        #expect(container.read().last == iterations)
     }
-    
-    func testConcurrentGetDictionary() {
+
+    @Test("Concurrent dictionary reads return correct value")
+    func concurrentGetDictionary() {
         let container = DBThreadSafeContainer(["key1": "value1", "key2": "value2"])
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             _ = container.read()
         }
-        
-        XCTAssertEqual(container.read(), ["key1": "value1", "key2": "value2"])
+
+        #expect(container.read() == ["key1": "value1", "key2": "value2"])
     }
-    
-    func testConcurrentSetDictionary() {
+
+    @Test("Concurrent dictionary operations")
+    func concurrentSetDictionary() {
         let container = DBThreadSafeContainer(["key": 0])
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
             container.write { dict in
                 let value = dict["key"]
                 dict["key"] = value! + 1
             }
         }
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { i in
             container.write { dict in
                 let key = "key\(i)"
                 dict[key] = i
             }
         }
-        
+
         DispatchQueue.concurrentPerform(iterations: iterations) { i in
             container.write { dict in
                 let key = "key\(i)"
                 dict.removeValue(forKey: key)
             }
         }
-        
-        XCTAssertEqual(container.read(), ["key": iterations])
+
+        #expect(container.read() == ["key": iterations])
     }
 }
