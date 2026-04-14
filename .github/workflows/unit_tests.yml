@@ -14,13 +14,13 @@ env:
 
 jobs:
   unit-tests-spm:
-    runs-on: 'macos-15'
+    runs-on: 'macos-latest'
 
     timeout-minutes: 10
 
     strategy:
       matrix:
-        DESTINATION: ["platform=iOS Simulator,name=iPhone 16", "platform=OS X", "platform=tvOS Simulator,name=Apple TV", "platform=watchOS Simulator,name=Apple Watch Ultra 2 (49mm)"]
+        DESTINATION: ["platform=iOS Simulator,name=iPhone 16e", "platform=OS X", "platform=tvOS Simulator,name=Apple TV", "platform=watchOS Simulator,name=Apple Watch SE 3 (44mm)"]
 
     steps:
     - name: Get source code
@@ -28,7 +28,7 @@ jobs:
 
     - name: Prepare Environment for App Build
       uses: ./.github/actions/prepare_env_app_build
-        
+
     - name: Resolve Dependencies
       run: >
         set -o pipefail && xcodebuild -resolvePackageDependencies
@@ -60,7 +60,7 @@ jobs:
       with:
         name: ${{ steps.tests.outputs.resultBundlePath }}
         path: ${{ steps.tests.outputs.resultBundlePath }}
-      if: success() || failure()
+      if: (success() || failure()) && steps.tests.outputs.resultBundlePath
 
   # This allows us to have a branch protection rule for tests and deploys with matrix
   status-for-matrix:
