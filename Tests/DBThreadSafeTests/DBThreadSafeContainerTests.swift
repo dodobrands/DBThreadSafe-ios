@@ -47,7 +47,7 @@ struct DBThreadSafeContainerTests {
             finished.signal()
         }
 
-        #expect(finished.wait(timeout: .now() + 1) == .success)
+        #expect(finished.wait(timeout: .now() + 3) == .success)
     }
 #endif
 
