@@ -37,17 +37,10 @@ struct DBThreadSafeContainerTests {
     @Test("Default backend preserves nested read access")
     func defaultBackendPreservesNestedReadAccess() {
         let container = DBThreadSafeContainer(0)
-        let finished = DispatchSemaphore(value: 0)
 
-        DispatchQueue.global().async {
-            container.read { _ in
-                #expect(container.read() == 0)
-            }
-
-            finished.signal()
+        container.read { _ in
+            #expect(container.read() == 0)
         }
-
-        #expect(finished.wait(timeout: .now() + 3) == .success)
     }
 #endif
 
