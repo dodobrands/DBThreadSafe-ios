@@ -5,7 +5,7 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fdodobrands%2FDBThreadSafe-ios%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/dodobrands/DBThreadSafe-ios)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fdodobrands%2FDBThreadSafe-ios%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/dodobrands/DBThreadSafe-ios)
 
-DBThreadSafeContainer is a generic class that provides thread-safe read and write access to a stored value. It uses a `pthread_rwlock_t` lock to ensure that multiple threads can safely access the value concurrently.
+DBThreadSafeContainer is a generic class that provides thread-safe read and write access to a stored value. By default it uses a `pthread_rwlock_t` backend and can opt into Apple's `Synchronization.Mutex` on supported OS versions.
 
 ## Usage
 
@@ -15,6 +15,37 @@ To create a new instance of DBThreadSafeContainer, simply initialize it with an 
 
 ```swift
 let container = DBThreadSafeContainer("Hello, World!")
+```
+
+The default initializer keeps the `pthread_rwlock_t` backend for backwards-compatible read semantics:
+
+You can inspect the chosen backend through `lockType`:
+
+```swift
+let container = DBThreadSafeContainer("Hello, World!")
+let lockType = container.lockType // .pthreadRWLock
+```
+
+### Selecting a lock backend explicitly
+
+Use `DBThreadSafeLock` to force a specific backend:
+
+```swift
+let pthreadContainer = DBThreadSafeContainer("Hello, World!", lock: .pthreadRWLock)
+```
+
+`Synchronization.Mutex` can only be selected on supported platforms:
+
+```swift
+if #available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *) {
+    let mutexContainer = DBThreadSafeContainer("Hello, World!", lock: .mutex)
+}
+```
+
+The same selection API is available on the property wrapper:
+
+```swift
+@ThreadSafe(lock: .pthreadRWLock) var counter = 0
 ```
 
 ### Mutex-compatible access
@@ -101,11 +132,16 @@ try container.write { value in
 
 ## Thread Safety
 
-DBThreadSafeContainer ensures that read and write operations are thread-safe by using a `pthread_rwlock_t` lock. This allows multiple threads to read the value concurrently, while ensuring that only one thread can write to the value at a time.
+DBThreadSafeContainer ensures that read and write operations are thread-safe, but the exact semantics depend on the selected backend:
+
+- `pthread_rwlock_t`: multiple readers can proceed concurrently, while writes remain exclusive
+- `Synchronization.Mutex`: both reads and writes are exclusive critical sections
+
+The default initializer preserves concurrent reader behavior. If you explicitly choose `Synchronization.Mutex`, reads become exclusive critical sections just like writes.
 
 ## Cleanup
 
-DBThreadSafeContainer automatically destroys the `pthread_rwlock_t` lock when it is deallocated to prevent any resource leaks.
+DBThreadSafeContainer automatically cleans up the selected lock backend when it is deallocated.
 
 ## License
 

@@ -6,6 +6,33 @@ import Testing
 struct ThreadSafeTests {
     let iterations = 100000
 
+    @Test("Property wrapper supports explicit pthread rwlock selection")
+    func explicitPThreadRWLockSelection() {
+        @ThreadSafe(lock: .pthreadRWLock) var counter = 42
+
+        #expect(counter == 42)
+        #expect($counter.lockType == .pthreadRWLock)
+    }
+
+#if canImport(Synchronization)
+    @available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *)
+    @Test("Property wrapper supports explicit mutex selection")
+    func explicitMutexSelection() {
+        @ThreadSafe(lock: .mutex) var counter = 42
+
+        #expect(counter == 42)
+        #expect($counter.lockType == .mutex)
+    }
+#endif
+
+    @Test("Property wrapper default keeps pthread backend")
+    func defaultSelectionKeepsPThreadBackend() {
+        @ThreadSafe var counter = 42
+
+        #expect(counter == 42)
+        #expect($counter.lockType == .pthreadRWLock)
+    }
+
     @Test("Reading wrappedValue returns correct value")
     func readWrappedValue() {
         @ThreadSafe var counter = 42

@@ -8,6 +8,10 @@ public final class ThreadSafe<T> {
         self.container = DBThreadSafeContainer(wrappedValue)
     }
 
+    public init(wrappedValue: T, lock: DBThreadSafeLock) {
+        self.container = DBThreadSafeContainer(wrappedValue, lock: lock)
+    }
+
     public var wrappedValue: T {
         get {
             container.read()
@@ -22,6 +26,7 @@ public final class ThreadSafe<T> {
         }
     }
 
+    /// Exposes the underlying container, including `read`, `write`, `withLock`, and `lockType`.
     public var projectedValue: DBThreadSafeContainer<T> {
         container
     }
