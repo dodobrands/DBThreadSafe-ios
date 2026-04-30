@@ -6,6 +6,51 @@ import Testing
 struct DBThreadSafeContainerTests {
     let iterations = 100000
 
+    @Test("Explicit pthread rwlock selection reports pthread backend")
+    func explicitPThreadRWLockSelection() {
+        let container = DBThreadSafeContainer(0, lock: .pthreadRWLock)
+
+        #expect(container.lockType == .pthreadRWLock)
+        #expect(container.read() == 0)
+    }
+
+#if canImport(Synchronization)
+    @available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *)
+    @Test("Explicit mutex selection reports mutex backend")
+    func explicitMutexSelection() {
+        let container = DBThreadSafeContainer(0, lock: .mutex)
+
+        #expect(container.lockType == .mutex)
+        #expect(container.read() == 0)
+    }
+
+    @available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *)
+    @Test("Default initializer prefers mutex when available")
+    func defaultInitializerPrefersMutexWhenAvailable() {
+        let container = DBThreadSafeContainer(0)
+
+        #expect(container.lockType == .mutex)
+        #expect(container.read() == 0)
+    }
+
+    @available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *)
+    @Test("Default backend preserves nested read access")
+    func defaultBackendPreservesNestedReadAccess() {
+        let container = DBThreadSafeContainer(0)
+        let finished = DispatchSemaphore(value: 0)
+
+        DispatchQueue.global().async {
+            container.read { _ in
+                #expect(container.read() == 0)
+            }
+
+            finished.signal()
+        }
+
+        #expect(finished.wait(timeout: .now() + 1) == .success)
+    }
+#endif
+
     @Test("Concurrent reads return correct value")
     func concurrentGet() {
         let container = DBThreadSafeContainer(0)
