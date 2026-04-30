@@ -25,12 +25,20 @@ struct ThreadSafeTests {
     }
 #endif
 
-    @Test("Property wrapper default keeps pthread backend")
-    func defaultSelectionKeepsPThreadBackend() {
+    @Test("Property wrapper default prefers mutex backend when available")
+    func defaultSelectionPrefersMutexBackendWhenAvailable() {
         @ThreadSafe var counter = 42
 
         #expect(counter == 42)
+        #if canImport(Synchronization)
+        if #available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *) {
+            #expect($counter.lockType == .mutex)
+        } else {
+            #expect($counter.lockType == .pthreadRWLock)
+        }
+        #else
         #expect($counter.lockType == .pthreadRWLock)
+        #endif
     }
 
     @Test("Reading wrappedValue returns correct value")

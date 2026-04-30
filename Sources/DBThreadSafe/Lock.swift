@@ -8,22 +8,24 @@ class LockStorage<T>: @unchecked Sendable {
         fatalError("Subclasses must override lockType")
     }
 
-    func readValue() -> T {
-        withReadValue { $0 }
+    func read() -> T {
+        fatalError("Subclasses must override read()")
     }
 
-    func withReadValue<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
-        fatalError("Subclasses must override withReadValue(_:)")
+    func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
+        fatalError("Subclasses must override read(_:)")
     }
 
-    func overwrite(with newValue: T) {
-        withWriteValue { value in
-            value = newValue
-        }
+    func write(_ newValue: T) {
+        fatalError("Subclasses must override write(_:)")
     }
 
-    func withWriteValue<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
-        fatalError("Subclasses must override withWriteValue(_:)")
+    func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
+        fatalError("Subclasses must override write(_:)")
+    }
+
+    func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
+        fatalError("Subclasses must override withLock(_:)")
     }
 }
 
@@ -39,13 +41,31 @@ final class PThreadRWLockStorage<T>: LockStorage<T>, @unchecked Sendable {
         self.value = value
     }
 
-    override func withReadValue<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
+    override func read() -> T {
+        lock.readLock()
+        defer { lock.unlock() }
+        return value
+    }
+
+    override func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
         lock.readLock()
         defer { lock.unlock() }
         return try closure(value)
     }
 
-    override func withWriteValue<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
+    override func write(_ newValue: T) {
+        lock.writeLock()
+        defer { lock.unlock() }
+        value = newValue
+    }
+
+    override func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
+        lock.writeLock()
+        defer { lock.unlock() }
+        try closure(&value)
+    }
+
+    override func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
         lock.writeLock()
         defer { lock.unlock() }
         return try closure(&value)
@@ -57,7 +77,6 @@ final class PThreadRWLockStorage<T>: LockStorage<T>, @unchecked Sendable {
 final class MutexStorage<T>: LockStorage<T>, @unchecked Sendable {
     nonisolated(unsafe) private var value: T
     private let mutex: Mutex<Void>
-    private let readDepthToken = NSObject()
 
     override var lockType: DBThreadSafeLock {
         .mutex
@@ -68,48 +87,31 @@ final class MutexStorage<T>: LockStorage<T>, @unchecked Sendable {
         self.mutex = Mutex(())
     }
 
-    override func withReadValue<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
-        try withNestedReadSupport(closure)
+    override func read() -> T {
+        withLock { value in
+            value
+        }
     }
 
-    override func withWriteValue<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
+    override func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
+        try withLock { value in
+            try closure(value)
+        }
+    }
+
+    override func write(_ newValue: T) {
+        withLock { value in
+            value = newValue
+        }
+    }
+
+    override func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
+        try withLock(closure)
+    }
+
+    override func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
         try mutex.withLock { _ in
             try closure(&value)
-        }
-    }
-
-    private var readDepthKey: String {
-        "dbthreadsafe.mutex.readDepth.\(UInt(bitPattern: Unmanaged.passUnretained(readDepthToken).toOpaque()))"
-    }
-
-    private var currentReadDepth: Int {
-        Thread.current.threadDictionary[readDepthKey] as? Int ?? 0
-    }
-
-    private func incrementReadDepth() {
-        Thread.current.threadDictionary[readDepthKey] = currentReadDepth + 1
-    }
-
-    private func decrementReadDepth() {
-        let newValue = currentReadDepth - 1
-
-        if newValue > 0 {
-            Thread.current.threadDictionary[readDepthKey] = newValue
-        } else {
-            Thread.current.threadDictionary.removeObject(forKey: readDepthKey)
-        }
-    }
-
-    private func withNestedReadSupport<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
-        if currentReadDepth > 0 {
-            return try closure(value)
-        }
-
-        return try mutex.withLock { _ in
-            incrementReadDepth()
-            defer { decrementReadDepth() }
-
-            return try closure(value)
         }
     }
 }

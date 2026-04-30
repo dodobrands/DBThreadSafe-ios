@@ -9,17 +9,31 @@ public final class DBThreadSafeContainer<T>: Sendable {
     }
 
     public init(_ value: T) {
-        self.storage = PThreadRWLockStorage(value)
+        self.storage = Self.makeDefaultStorage(value)
     }
 
     public init(_ value: T, lock: DBThreadSafeLock) {
+        self.storage = Self.makeStorage(value, lock: lock)
+    }
+
+    private static func makeDefaultStorage(_ value: T) -> LockStorage<T> {
+        #if canImport(Synchronization)
+        if #available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *) {
+            return MutexStorage(value)
+        }
+        #endif
+
+        return PThreadRWLockStorage(value)
+    }
+
+    private static func makeStorage(_ value: T, lock: DBThreadSafeLock) -> LockStorage<T> {
         switch lock {
         case .pthreadRWLock:
-            self.storage = PThreadRWLockStorage(value)
+            return PThreadRWLockStorage(value)
 #if canImport(Synchronization)
         case .mutex:
             if #available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *) {
-                self.storage = MutexStorage(value)
+                return MutexStorage(value)
             } else {
                 preconditionFailure("DBThreadSafeLock.mutex requires a supported OS version")
             }
@@ -30,30 +44,30 @@ public final class DBThreadSafeContainer<T>: Sendable {
     /// Reads the value stored
     /// - Returns: The value stored in the container.
     public func read() -> T {
-        storage.readValue()
+        storage.read()
     }
 
     public func read(_ closure: (_ value: T) throws -> Void) rethrows {
-        try storage.withReadValue(closure)
+        try storage.read(closure)
     }
 
     public func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
-        try storage.withReadValue(closure)
+        try storage.read(closure)
     }
 
     /// Executes a closure while holding an exclusive lock on the stored value.
     public func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
-        try storage.withWriteValue(closure)
+        try storage.withLock(closure)
     }
 
     /// Replaces current value with a new one
     /// - Parameter newValue: The new value to be stored in the container.
     public func write(_ newValue: T) {
-        storage.overwrite(with: newValue)
+        storage.write(newValue)
     }
 
     /// Returns current value in a closure with possibility to make multiple modifications of any kind inside a single lock.
     public func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
-        try storage.withWriteValue(closure)
+        try storage.write(closure)
     }
 }
