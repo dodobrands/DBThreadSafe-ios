@@ -1,7 +1,7 @@
 import Foundation
 
 public final class DBThreadSafeContainer<T>: Sendable {
-    private let storage: LockStorage<T>
+    private let storage: any LockStorage<T>
 
     /// The concrete lock backend currently used by the container.
     public var lockType: DBThreadSafeLock {
@@ -16,7 +16,7 @@ public final class DBThreadSafeContainer<T>: Sendable {
         self.storage = Self.makeStorage(value, lock: lock)
     }
 
-    private static func makeDefaultStorage(_ value: T) -> LockStorage<T> {
+    private static func makeDefaultStorage(_ value: T) -> any LockStorage<T> {
         #if canImport(Synchronization)
         if #available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *) {
             return MutexStorage(value)
@@ -26,7 +26,7 @@ public final class DBThreadSafeContainer<T>: Sendable {
         return PThreadRWLockStorage(value)
     }
 
-    private static func makeStorage(_ value: T, lock: DBThreadSafeLock) -> LockStorage<T> {
+    private static func makeStorage(_ value: T, lock: DBThreadSafeLock) -> any LockStorage<T> {
         switch lock {
         case .pthreadRWLock:
             return PThreadRWLockStorage(value)

@@ -3,37 +3,25 @@ import Foundation
 import Synchronization
 #endif
 
-class LockStorage<T>: @unchecked Sendable {
+protocol LockStorage<Value>: AnyObject, Sendable {
+    associatedtype Value
+
     var lockType: DBThreadSafeLock {
-        fatalError("Subclasses must override lockType")
+        get
     }
 
-    func read() -> T {
-        fatalError("Subclasses must override read()")
-    }
-
-    func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
-        fatalError("Subclasses must override read(_:)")
-    }
-
-    func write(_ newValue: T) {
-        fatalError("Subclasses must override write(_:)")
-    }
-
-    func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
-        fatalError("Subclasses must override write(_:)")
-    }
-
-    func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
-        fatalError("Subclasses must override withLock(_:)")
-    }
+    func read() -> Value
+    func read<U>(_ closure: (_ value: Value) throws -> U) rethrows -> U
+    func write(_ newValue: Value)
+    func write(_ closure: (_ value: inout Value) throws -> Void) rethrows
+    func withLock<U>(_ closure: (_ value: inout Value) throws -> U) rethrows -> U
 }
 
-final class PThreadRWLockStorage<T>: LockStorage<T>, @unchecked Sendable {
+final class PThreadRWLockStorage<T>: LockStorage, @unchecked Sendable {
     nonisolated(unsafe) private var value: T
     private let lock = Lock()
 
-    override var lockType: DBThreadSafeLock {
+    var lockType: DBThreadSafeLock {
         .pthreadRWLock
     }
 
@@ -41,31 +29,31 @@ final class PThreadRWLockStorage<T>: LockStorage<T>, @unchecked Sendable {
         self.value = value
     }
 
-    override func read() -> T {
+    func read() -> T {
         lock.readLock()
         defer { lock.unlock() }
         return value
     }
 
-    override func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
+    func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
         lock.readLock()
         defer { lock.unlock() }
         return try closure(value)
     }
 
-    override func write(_ newValue: T) {
+    func write(_ newValue: T) {
         lock.writeLock()
         defer { lock.unlock() }
         value = newValue
     }
 
-    override func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
+    func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
         lock.writeLock()
         defer { lock.unlock() }
         try closure(&value)
     }
 
-    override func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
+    func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
         lock.writeLock()
         defer { lock.unlock() }
         return try closure(&value)
@@ -74,11 +62,11 @@ final class PThreadRWLockStorage<T>: LockStorage<T>, @unchecked Sendable {
 
 #if canImport(Synchronization)
 @available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *)
-final class MutexStorage<T>: LockStorage<T>, @unchecked Sendable {
+final class MutexStorage<T>: LockStorage, @unchecked Sendable {
     nonisolated(unsafe) private var value: T
     private let mutex: Mutex<Void>
 
-    override var lockType: DBThreadSafeLock {
+    var lockType: DBThreadSafeLock {
         .mutex
     }
 
@@ -87,29 +75,29 @@ final class MutexStorage<T>: LockStorage<T>, @unchecked Sendable {
         self.mutex = Mutex(())
     }
 
-    override func read() -> T {
+    func read() -> T {
         withLock { value in
             value
         }
     }
 
-    override func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
+    func read<U>(_ closure: (_ value: T) throws -> U) rethrows -> U {
         try withLock { value in
             try closure(value)
         }
     }
 
-    override func write(_ newValue: T) {
+    func write(_ newValue: T) {
         withLock { value in
             value = newValue
         }
     }
 
-    override func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
+    func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
         try withLock(closure)
     }
 
-    override func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
+    func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
         try mutex.withLock { _ in
             try closure(&value)
         }
