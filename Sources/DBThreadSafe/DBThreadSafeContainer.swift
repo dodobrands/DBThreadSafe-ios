@@ -27,6 +27,13 @@ public final class DBThreadSafeContainer<T>: Sendable {
         defer { lock.unlock() }
         return try closure(value)
     }
+
+    /// Executes a closure while holding an exclusive lock on the stored value.
+    public func withLock<U>(_ closure: (_ value: inout T) throws -> U) rethrows -> U {
+        lock.writeLock()
+        defer { lock.unlock() }
+        return try closure(&value)
+    }
     
     /// Replaces current value with a new one
     /// - Parameter newValue: The new value to be stored in the container.
@@ -38,8 +45,6 @@ public final class DBThreadSafeContainer<T>: Sendable {
         
     /// Returns current value in a closure with possibility to make multiple modifications of any kind inside a single lock.
     public func write(_ closure: (_ value: inout T) throws -> Void) rethrows {
-        lock.writeLock()
-        defer { lock.unlock() }
-        try closure(&value)
+        try withLock(closure)
     }
 }

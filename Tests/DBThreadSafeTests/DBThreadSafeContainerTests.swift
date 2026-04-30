@@ -126,4 +126,53 @@ struct DBThreadSafeContainerTests {
 
         #expect(container.read() == ["key": iterations])
     }
+    // MARK: - Mutex-compatible API
+
+    @Test("withLock returns transformed value")
+    func withLockReturnValue() {
+        let container = DBThreadSafeContainer("Hello, World!")
+
+        let length = container.withLock { value in
+            value.count
+        }
+
+        #expect(length == 13)
+    }
+
+    @Test("withLock provides inout access for mutation")
+    func withLockMutation() {
+        let container = DBThreadSafeContainer(0)
+
+        container.withLock { value in
+            value = 42
+        }
+
+        #expect(container.read() == 42)
+    }
+
+    @Test("Concurrent increments via withLock")
+    func concurrentWithLock() {
+        let container = DBThreadSafeContainer(0)
+
+        DispatchQueue.concurrentPerform(iterations: iterations) { _ in
+            container.withLock { value in
+                value += 1
+            }
+        }
+
+        #expect(container.read() == iterations)
+    }
+
+    @Test("withLock rethrows from throwing closure")
+    func withLockThrowing() {
+        let container = DBThreadSafeContainer(0)
+
+        enum TestError: Error { case someError }
+
+        #expect(throws: TestError.self) {
+            try container.withLock { _ in
+                throw TestError.someError
+            }
+        }
+    }
 }

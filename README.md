@@ -17,6 +17,26 @@ To create a new instance of DBThreadSafeContainer, simply initialize it with an 
 let container = DBThreadSafeContainer("Hello, World!")
 ```
 
+### Mutex-compatible access
+
+If you plan to migrate from `DBThreadSafeContainer` to Apple's `Mutex`, prefer `withLock`:
+
+```swift
+let length = container.withLock { value in
+    value.count
+}
+```
+
+`withLock` also supports mutation through `inout`, matching the call-site shape of `Mutex`:
+
+```swift
+container.withLock { value in
+    value += "!"
+}
+```
+
+The existing `read` and `write` APIs remain available.
+
 ### Reading the value
 
 To read the value stored in the container, use the `read()` method:
