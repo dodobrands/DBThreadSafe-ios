@@ -5,7 +5,7 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fdodobrands%2FDBThreadSafe-ios%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/dodobrands/DBThreadSafe-ios)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fdodobrands%2FDBThreadSafe-ios%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/dodobrands/DBThreadSafe-ios)
 
-DBThreadSafeContainer is a generic class that provides thread-safe read and write access to a stored value. It uses a `pthread_rwlock_t` lock to ensure that multiple threads can safely access the value concurrently.
+DBThreadSafeContainer is a generic class that provides thread-safe read and write access to a stored value. By default it prefers Apple's `Synchronization.Mutex` on supported OS versions and falls back to `pthread_rwlock_t` elsewhere.
 
 ## Usage
 
@@ -16,6 +16,59 @@ To create a new instance of DBThreadSafeContainer, simply initialize it with an 
 ```swift
 let container = DBThreadSafeContainer("Hello, World!")
 ```
+
+The default initializer prefers `Synchronization.Mutex` when the current OS supports it:
+
+You can inspect the chosen backend through `lockType`:
+
+```swift
+let container = DBThreadSafeContainer("Hello, World!")
+let lockType = container.lockType // .mutex on supported OS versions, otherwise .pthreadRWLock
+```
+
+### Selecting a lock backend explicitly
+
+Use `DBThreadSafeLock` to force a specific backend:
+
+```swift
+let pthreadContainer = DBThreadSafeContainer("Hello, World!", lock: .pthreadRWLock)
+```
+
+Use this explicit opt-out when you need the old `pthread_rwlock_t` semantics with concurrent readers or same-thread nested reads.
+
+`Synchronization.Mutex` can only be selected on supported platforms:
+
+```swift
+if #available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *) {
+    let mutexContainer = DBThreadSafeContainer("Hello, World!", lock: .mutex)
+}
+```
+
+The same selection API is available on the property wrapper:
+
+```swift
+@ThreadSafe(lock: .pthreadRWLock) var counter = 0
+```
+
+### Mutex-compatible access
+
+If you plan to migrate from `DBThreadSafeContainer` to Apple's `Mutex`, prefer `withLock`:
+
+```swift
+let length = container.withLock { value in
+    value.count
+}
+```
+
+`withLock` also supports mutation through `inout`, matching the call-site shape of `Mutex`:
+
+```swift
+container.withLock { value in
+    value += "!"
+}
+```
+
+The existing `read` and `write` APIs remain available. When the mutex backend is active, both of them route through the same exclusive critical section as `withLock`.
 
 ### Reading the value
 
@@ -81,11 +134,16 @@ try container.write { value in
 
 ## Thread Safety
 
-DBThreadSafeContainer ensures that read and write operations are thread-safe by using a `pthread_rwlock_t` lock. This allows multiple threads to read the value concurrently, while ensuring that only one thread can write to the value at a time.
+DBThreadSafeContainer ensures that read and write operations are thread-safe, but the exact semantics depend on the selected backend:
+
+- `pthread_rwlock_t`: multiple readers can proceed concurrently, while writes remain exclusive
+- `Synchronization.Mutex`: `read`, `write`, and `withLock` all use the same exclusive critical section
+
+The default initializer now prefers `Synchronization.Mutex` when available. If you need concurrent-reader behavior or same-thread nested `read` calls, select `.pthreadRWLock` explicitly. The mutex backend is not re-entrant: calling `read` again from inside `read`/`withLock` on the same container can deadlock.
 
 ## Cleanup
 
-DBThreadSafeContainer automatically destroys the `pthread_rwlock_t` lock when it is deallocated to prevent any resource leaks.
+DBThreadSafeContainer automatically cleans up the selected lock backend when it is deallocated.
 
 ## License
 

@@ -6,6 +6,50 @@ import Testing
 struct DBThreadSafeContainerTests {
     let iterations = 100000
 
+    @Test("Explicit pthread rwlock selection reports pthread backend")
+    func explicitPThreadRWLockSelection() {
+        let container = DBThreadSafeContainer(0, lock: .pthreadRWLock)
+
+        #expect(container.lockType == .pthreadRWLock)
+        #expect(container.read() == 0)
+    }
+
+#if canImport(Synchronization)
+    @available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *)
+    @Test("Explicit mutex selection reports mutex backend")
+    func explicitMutexSelection() {
+        let container = DBThreadSafeContainer(0, lock: .mutex)
+
+        #expect(container.lockType == .mutex)
+        #expect(container.read() == 0)
+    }
+#endif
+
+    @Test("Default initializer prefers mutex backend when available")
+    func defaultInitializerPrefersMutexBackendWhenAvailable() {
+        let container = DBThreadSafeContainer(0)
+
+        #if canImport(Synchronization)
+        if #available(iOS 18, macCatalyst 18, macOS 15, tvOS 18, watchOS 11, visionOS 2, *) {
+            #expect(container.lockType == .mutex)
+        } else {
+            #expect(container.lockType == .pthreadRWLock)
+        }
+        #else
+        #expect(container.lockType == .pthreadRWLock)
+        #endif
+        #expect(container.read() == 0)
+    }
+
+    @Test("Explicit pthread backend preserves nested read access")
+    func explicitPThreadBackendPreservesNestedReadAccess() {
+        let container = DBThreadSafeContainer(0, lock: .pthreadRWLock)
+
+        container.read { _ in
+            #expect(container.read() == 0)
+        }
+    }
+
     @Test("Concurrent reads return correct value")
     func concurrentGet() {
         let container = DBThreadSafeContainer(0)
@@ -125,5 +169,54 @@ struct DBThreadSafeContainerTests {
         }
 
         #expect(container.read() == ["key": iterations])
+    }
+    // MARK: - Mutex-compatible API
+
+    @Test("withLock returns transformed value")
+    func withLockReturnValue() {
+        let container = DBThreadSafeContainer("Hello, World!")
+
+        let length = container.withLock { value in
+            value.count
+        }
+
+        #expect(length == 13)
+    }
+
+    @Test("withLock provides inout access for mutation")
+    func withLockMutation() {
+        let container = DBThreadSafeContainer(0)
+
+        container.withLock { value in
+            value = 42
+        }
+
+        #expect(container.read() == 42)
+    }
+
+    @Test("Concurrent increments via withLock")
+    func concurrentWithLock() {
+        let container = DBThreadSafeContainer(0)
+
+        DispatchQueue.concurrentPerform(iterations: iterations) { _ in
+            container.withLock { value in
+                value += 1
+            }
+        }
+
+        #expect(container.read() == iterations)
+    }
+
+    @Test("withLock rethrows from throwing closure")
+    func withLockThrowing() {
+        let container = DBThreadSafeContainer(0)
+
+        enum TestError: Error { case someError }
+
+        #expect(throws: TestError.self) {
+            try container.withLock { _ in
+                throw TestError.someError
+            }
+        }
     }
 }
