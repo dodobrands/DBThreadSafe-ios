@@ -70,6 +70,23 @@ container.withLock { value in
 
 The existing `read` and `write` APIs remain available. When the mutex backend is active, both of them route through the same exclusive critical section as `withLock`.
 
+### Weak references
+
+Use `DBThreadSafeWeakContainer` when you need a weak reference that still keeps the enclosing type `Sendable`:
+
+```swift
+protocol LoggerDelegate: AnyObject {}
+
+let delegate = DBThreadSafeWeakContainer<any LoggerDelegate>()
+delegate.withLock { value in
+    value = loggerDelegate
+}
+```
+
+`DBThreadSafeWeakContainer` exposes only `withLock`. Its payload is optional because the weak reference can disappear at any time.
+
+The weak container follows the same lock backend selection as `DBThreadSafeContainer` and exposes the active backend through `lockType`.
+
 ### Reading the value
 
 To read the value stored in the container, use the `read()` method:
