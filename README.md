@@ -81,6 +81,8 @@ let delegate = DBThreadSafeWeakContainer<any LoggerDelegate>()
 delegate.value = loggerDelegate
 ```
 
+`DBThreadSafeWeakContainer` mirrors the `DBThreadSafeContainer` access patterns with `read`, `write`, and `withLock`, but its payload is optional because the weak reference can disappear at any time.
+
 The weak container follows the same lock backend selection as `DBThreadSafeContainer` and exposes the active backend through `lockType`.
 
 ### Reading the value
