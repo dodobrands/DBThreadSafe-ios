@@ -52,43 +52,9 @@ public final class DBThreadSafeWeakContainer<T>: Sendable {
         }
     }
 
-    /// Reads the value stored.
-    /// - Returns: The weakly stored value, or `nil` if it was deallocated.
-    public func read() -> T? {
-        storage.read()
-    }
-
-    public func read(_ closure: (_ value: T?) throws -> Void) rethrows {
-        try storage.read(closure)
-    }
-
-    public func read<U>(_ closure: (_ value: T?) throws -> U) rethrows -> U {
-        try storage.read(closure)
-    }
-
     /// Executes a closure while holding an exclusive lock on the stored weak reference.
     public func withLock<U>(_ closure: (_ value: inout T?) throws -> U) rethrows -> U {
         try storage.withLock(closure)
-    }
-
-    /// Replaces current weakly stored value with a new one.
-    /// - Parameter newValue: The new value to be stored in the container.
-    public func write(_ newValue: T?) {
-        storage.write(newValue)
-    }
-
-    /// Returns current weakly stored value in a closure with possibility to replace it inside a single lock.
-    public func write(_ closure: (_ value: inout T?) throws -> Void) rethrows {
-        try storage.write(closure)
-    }
-
-    public var value: T? {
-        get {
-            read()
-        }
-        set {
-            write(newValue)
-        }
     }
 }
 
@@ -96,11 +62,6 @@ protocol WeakLockStorage<Value>: AnyObject, Sendable {
     associatedtype Value
 
     var lockType: DBThreadSafeLock { get }
-
-    func read() -> Value?
-    func read<U>(_ closure: (_ value: Value?) throws -> U) rethrows -> U
-    func write(_ newValue: Value?)
-    func write(_ closure: (_ value: inout Value?) throws -> Void) rethrows
     func withLock<U>(_ closure: (_ value: inout Value?) throws -> U) rethrows -> U
 }
 
@@ -114,28 +75,6 @@ final class PThreadRWLockWeakStorage<T>: WeakLockStorage, @unchecked Sendable {
 
     init(_ value: T?) {
         self.object = value as AnyObject?
-    }
-
-    func read() -> T? {
-        lock.readLock()
-        defer { lock.unlock() }
-        return object as? T
-    }
-
-    func read<U>(_ closure: (_ value: T?) throws -> U) rethrows -> U {
-        lock.readLock()
-        defer { lock.unlock() }
-        return try closure(object as? T)
-    }
-
-    func write(_ newValue: T?) {
-        lock.writeLock()
-        defer { lock.unlock() }
-        object = newValue as AnyObject?
-    }
-
-    func write(_ closure: (_ value: inout T?) throws -> Void) rethrows {
-        try withLock(closure)
     }
 
     func withLock<U>(_ closure: (_ value: inout T?) throws -> U) rethrows -> U {
@@ -162,28 +101,6 @@ final class MutexWeakStorage<T>: WeakLockStorage, @unchecked Sendable {
     init(_ value: T?) {
         self.object = value as AnyObject?
         self.mutex = Mutex(())
-    }
-
-    func read() -> T? {
-        mutex.withLock { _ in
-            object as? T
-        }
-    }
-
-    func read<U>(_ closure: (_ value: T?) throws -> U) rethrows -> U {
-        try mutex.withLock { _ in
-            try closure(object as? T)
-        }
-    }
-
-    func write(_ newValue: T?) {
-        mutex.withLock { _ in
-            object = newValue as AnyObject?
-        }
-    }
-
-    func write(_ closure: (_ value: inout T?) throws -> Void) rethrows {
-        try withLock(closure)
     }
 
     func withLock<U>(_ closure: (_ value: inout T?) throws -> U) rethrows -> U {

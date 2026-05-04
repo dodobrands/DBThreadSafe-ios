@@ -40,7 +40,7 @@ struct DBThreadSafeWeakContainerTests {
     func initWithoutValueStoresNil() {
         let container = DBThreadSafeWeakContainer<NSObject>()
 
-        #expect(container.read() == nil)
+        #expect(container.withLock { $0 } == nil)
     }
 
     @Test("Init with value stores reference")
@@ -48,27 +48,31 @@ struct DBThreadSafeWeakContainerTests {
         let object = NSObject()
         let container = DBThreadSafeWeakContainer(object)
 
-        #expect(container.read() === object)
+        #expect(container.withLock { $0 } === object)
     }
 
-    @Test("Write and read value")
-    func writeAndReadValue() {
+    @Test("withLock can write and read value")
+    func withLockCanWriteAndReadValue() {
         let container = DBThreadSafeWeakContainer<NSObject>()
         let object = NSObject()
 
-        container.write(object)
+        container.withLock { value in
+            value = object
+        }
 
-        #expect(container.read() === object)
+        #expect(container.withLock { $0 } === object)
     }
 
-    @Test("Write nil clears value")
-    func writeNilClearsValue() {
+    @Test("withLock can clear value")
+    func withLockCanClearValue() {
         let object = NSObject()
         let container = DBThreadSafeWeakContainer(object)
 
-        container.write(nil)
+        container.withLock { value in
+            value = nil
+        }
 
-        #expect(container.read() == nil)
+        #expect(container.withLock { $0 } == nil)
     }
 
     @Test("Value becomes nil when referenced object deallocates")
@@ -77,34 +81,26 @@ struct DBThreadSafeWeakContainerTests {
 
         autoreleasepool {
             let object = NSObject()
-            container.write(object)
-            #expect(container.read() != nil)
+            container.withLock { value in
+                value = object
+            }
+            #expect(container.withLock { $0 } != nil)
         }
 
-        #expect(container.read() == nil)
+        #expect(container.withLock { $0 } == nil)
     }
 
-    @Test("Write closure replaces value with another object")
-    func writeClosureReplacesValueWithAnotherObject() {
+    @Test("withLock replaces value with another object")
+    func withLockReplacesValueWithAnotherObject() {
         let first = NSObject()
         let second = NSObject()
         let container = DBThreadSafeWeakContainer(first)
 
-        container.write { value in
+        container.withLock { value in
             value = second
         }
 
-        #expect(container.read() === second)
-    }
-
-    @Test("Read closure with return value")
-    func readClosureReturnValue() {
-        let object = NSObject()
-        let container = DBThreadSafeWeakContainer(object)
-
-        let storedObject = container.read { $0 }
-
-        #expect(storedObject === object)
+        #expect(container.withLock { $0 } === second)
     }
 
     @Test("withLock updates stored value")
@@ -117,7 +113,7 @@ struct DBThreadSafeWeakContainerTests {
             value = second
         }
 
-        #expect(container.read() === second)
+        #expect(container.withLock { $0 } === second)
     }
 
     @Test("withLock returns transformed value")
@@ -139,9 +135,11 @@ struct DBThreadSafeWeakContainerTests {
         let delegate = Delegate()
         let container = DBThreadSafeWeakContainer<any TestDelegate>()
 
-        container.write(delegate)
+        container.withLock { value in
+            value = delegate
+        }
 
-        #expect((container.read() as AnyObject?) === delegate)
+        #expect((container.withLock { $0 } as AnyObject?) === delegate)
     }
 }
 
