@@ -62,9 +62,10 @@ struct ThreadSafeTests {
     @Test("Concurrent reads via wrappedValue")
     func concurrentReads() {
         @ThreadSafe var value = 42
+        let container = $value
 
         DispatchQueue.concurrentPerform(iterations: iterations) { _ in
-            _ = value
+            _ = container.read { $0 }
         }
 
         #expect(value == 42)
